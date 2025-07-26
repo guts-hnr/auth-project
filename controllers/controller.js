@@ -2,7 +2,8 @@ import userEvents from "../events/event.js";
 import fs from "fs/promises";
 import path from "path";
 import bcrypt from "bcrypt";
-import userShema from "../util/validation.js";
+import userShema from "../util/authValidation.js";
+import { userLog, emailLog } from "../util/loginValidation.js";
 import jwt from "jsonwebtoken";
 import { v4 as uuid } from "uuid";
 
@@ -13,22 +14,24 @@ userEvents.on("register", async (req, res) => {
   if (error) return res.status(400).send(error.details[0].message);
 
   try {
-    const { username, password } = req.body;
+    const { username, email, password } = req.body;
 
     const data = await fs.readFile(dataPath, "utf-8");
     const users = JSON.parse(data);
     const id = uuid();
-    console.log(id);
 
-    const user = users.find((u) => u.username === username);
+    const emlCheck = users.find((u) => u.email === email);
+    const usrnmCheck = users.find((usrnm) => (usrnm.username = username));
 
-    if (user) {
+    if (emlCheck) {
       return res.send("You've already registered!\nYou must log in.");
+    } else if (usrnmCheck) {
+      return res.send("This username is already taken.\nPlease change it!");
     }
 
     const hasedPswd = await bcrypt.hash(password, 10);
 
-    users.push({ username, password: hasedPswd });
+    users.push({ id, username, email, password: hasedPswd });
     await fs.writeFile(dataPath, JSON.stringify(users));
 
     res.send("You're registered.");
@@ -38,26 +41,32 @@ userEvents.on("register", async (req, res) => {
 });
 
 userEvents.on("login", async (req, res) => {
-  try {
-    const { error } = userShema.validate(req.body);
-    if (error) return res.status(400).send(error.details[0].message);
+  const { error } = userLog.validate(req.body) ?? emailLog.validate(req.body);
+  if (error) return res.status(400).send(error.details[0].message);
 
-    const { username, password } = req.body;
+  try {
+    const { username, email, password } = req.body;
 
     const data = await fs.readFile(dataPath, "utf-8");
     const users = JSON.parse(data);
 
-    const user = users.find((u) => u.username === username);
+    const emlCheck = users.find((u) => u.email === email);
+    const usrnmCheck = users.find((u) => u.username === username);
 
-    if (!user) {
+    if (!emlCheck) {
+      res.send("There is no such email.\nYou must register!");
+    } else if (!usrnmCheck) {
       res.send("There is no such username.\nYou must register!");
     }
 
-    const match = await bcrypt.compare(password, user.password);
+    const match = await bcrypt.compare(
+      password,
+      emlCheck.password || usrnmCheck.password
+    );
 
     if (match) {
       const token = jwt.sign(
-        { username: user.username },
+        { username: emlCheck.username || usrnmCheck.username },
         process.env.ACCESS_TOKEN_KEY,
         {
           expiresIn: "1h",
