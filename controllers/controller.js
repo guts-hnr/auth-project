@@ -3,7 +3,7 @@ import fs from "fs/promises";
 import path from "path";
 import bcrypt from "bcrypt";
 import userShema from "../util/authValidation.js";
-import { userLog, emailLog } from "../util/loginValidation.js";
+import loginShema from "../util/loginValidation.js";
 import jwt from "jsonwebtoken";
 import { v4 as uuid } from "uuid";
 
@@ -18,21 +18,26 @@ userEvents.on("register", async (req, res) => {
 
     const data = await fs.readFile(dataPath, "utf-8");
     const users = JSON.parse(data);
-    const id = uuid();
 
-    const emlCheck = users.find((u) => u.email === email);
-    const usrnmCheck = users.find((usrnm) => (usrnm.username = username));
+    const emailExists = users.find((u) => u.email === email);
+    const usernameExists = users.find((u) => u.username === username);
 
-    if (emlCheck) {
+    if (emailExists)
       return res.send("You've already registered!\nYou must log in.");
-    } else if (usrnmCheck) {
+
+    if (usernameExists)
       return res.send("This username is already taken.\nPlease change it!");
-    }
 
-    const hasedPswd = await bcrypt.hash(password, 10);
+    const hashedPswd = await bcrypt.hash(password, 10);
+    const newUser = {
+      id: uuid(),
+      username,
+      email,
+      password,
+    };
 
-    users.push({ id, username, email, password: hasedPswd });
-    await fs.writeFile(dataPath, JSON.stringify(users));
+    users.push(newUser);
+    await fs.writeFile(dataPath, JSON.stringify(users, null, 2));
 
     res.send("You're registered.");
   } catch (error) {
@@ -41,7 +46,7 @@ userEvents.on("register", async (req, res) => {
 });
 
 userEvents.on("login", async (req, res) => {
-  const { error } = userLog.validate(req.body) ?? emailLog.validate(req.body);
+  const { error } = loginShema.validate(req.body);
   if (error) return res.status(400).send(error.details[0].message);
 
   try {
@@ -50,23 +55,19 @@ userEvents.on("login", async (req, res) => {
     const data = await fs.readFile(dataPath, "utf-8");
     const users = JSON.parse(data);
 
-    const emlCheck = users.find((u) => u.email === email);
-    const usrnmCheck = users.find((u) => u.username === username);
+    const user = users.find((u) =>
+      email ? u.email === email : u.username === username
+    );
 
-    if (!emlCheck) {
-      res.send("There is no such email.\nYou must register!");
-    } else if (!usrnmCheck) {
-      res.send("There is no such username.\nYou must register!");
+    if (!user) {
+      return res.status(404).send("Пользователь не найден");
     }
 
-    const match = await bcrypt.compare(
-      password,
-      emlCheck.password || usrnmCheck.password
-    );
+    const match = await bcrypt.compare(password, user.password);
 
     if (match) {
       const token = jwt.sign(
-        { username: emlCheck.username || usrnmCheck.username },
+        { username: user.username },
         process.env.ACCESS_TOKEN_KEY,
         {
           expiresIn: "1h",
@@ -82,14 +83,23 @@ userEvents.on("login", async (req, res) => {
 });
 
 userEvents.on("delete", async (req, res) => {
+  const { error } = loginShema.validate(req.body);
+  if (error) return res.status(400).send(error.details[0].message);
+
   try {
+    const { username } = req.user;
+
     const data = await fs.readFile(dataPath, "utf-8");
     const users = JSON.parse(data);
 
-    const newUsers = users.filter((u) => u.username !== req.body.username);
-    await fs.writeFile(dataPath, JSON.stringify(newUsers));
+    const newUsers = users.filter((user) => user.username === username);
 
-    res.send("You've deleted this account.");
+    if (users.length === newUsers.length) {
+      return res.status(404).send("Пользователь не найден!");
+    }
+
+    await fs.writeFile(dataPath, JSON.stringify(newUsers, null, 2));
+    res.send(`Пользователь ${username} удалён.`);
   } catch (error) {
     if (error) throw error;
   }

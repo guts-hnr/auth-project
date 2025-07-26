@@ -1,6 +1,5 @@
 import express from "express";
 import userEvents from "../events/event.js";
-import "../controllers/controller.js";
 import authenticateToken from "../middleware/authMiddleware.js";
 
 const router = express.Router();
@@ -13,7 +12,7 @@ router.post("/login", (req, res) => {
   userEvents.emit("login", req, res);
 });
 
-router.post("/delete", authenticateToken, (req, res) => {
+router.delete("/user", authenticateToken, (req, res) => {
   userEvents.emit("delete", req, res);
 });
 
