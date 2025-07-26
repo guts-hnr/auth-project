@@ -4,18 +4,21 @@ import path from "path";
 import bcrypt from "bcrypt";
 import userShema from "../util/validation.js";
 import jwt from "jsonwebtoken";
+import { v4 as uuid } from "uuid";
 
 const dataPath = path.join(process.cwd(), "data", "data.json");
 
 userEvents.on("register", async (req, res) => {
-  try {
-    const { error } = userShema.validate(req.body);
-    if (error) return res.status(400).send(error.details[0].message);
+  const { error } = userShema.validate(req.body);
+  if (error) return res.status(400).send(error.details[0].message);
 
+  try {
     const { username, password } = req.body;
 
     const data = await fs.readFile(dataPath, "utf-8");
     const users = JSON.parse(data);
+    const id = uuid();
+    console.log(id);
 
     const user = users.find((u) => u.username === username);
 
