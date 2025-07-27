@@ -3,6 +3,7 @@ import path from "path";
 import bcrypt from "bcrypt";
 import userShema from "../util/authValidation.js";
 import loginShema from "../util/loginValidation.js";
+import deleteShema from "../util/deleteValidation.js";
 import jwt from "jsonwebtoken";
 import { v4 as uuid } from "uuid";
 
@@ -60,7 +61,7 @@ export const login = async (req, res) => {
     );
 
     if (!user) {
-      return res.status(404).send("Пользователь не найден");
+      return res.status(404).send("Username not founded.");
     }
 
     const match = await bcrypt.compare(password, user.password);
@@ -85,7 +86,7 @@ export const login = async (req, res) => {
 };
 
 export const deleteUser = async (req, res) => {
-  const { error } = loginShema.validate(req.body);
+  const { error } = deleteShema.validate(req.body);
   if (error) return res.status(400).send(error.details[0].message);
 
   try {
@@ -97,11 +98,11 @@ export const deleteUser = async (req, res) => {
     const newUsers = users.filter((user) => user.username !== username);
 
     if (users.length === newUsers.length) {
-      return res.status(404).send("Пользователь не найден!");
+      return res.status(404).send("Username not founded!");
     }
 
     await fs.writeFile(dataPath, JSON.stringify(newUsers, null, 2));
-    res.send(`Пользователь ${username} удалён.`);
+    res.send(`Username ${username} deleted.`);
   } catch (error) {
     console.error(error);
     res.status(500).send("Internal server error.");

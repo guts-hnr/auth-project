@@ -1,5 +1,9 @@
 import express from "express";
-import { registerHandler, login, deleteUser } from "../functions/func.js";
+import {
+  registerHandler,
+  login,
+  deleteUser,
+} from "../controllers/controller.js";
 import authenticateToken from "../middleware/authMiddleware.js";
 
 const router = express.Router();

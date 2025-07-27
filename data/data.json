@@ -4,5 +4,11 @@
     "username": "Harry",
     "email": "amirew@1122.com",
     "password": "$2b$10$ThKUpLUb/tOPum4kfIYiJOBqDzgVM5prWImgGA8bWX99u0.zKi/PW"
+  },
+  {
+    "id": "3b8e46e4-49b0-44c6-b7f9-131d7acd9744",
+    "username": "Kevin",
+    "email": "efwf221@gmail.com",
+    "password": "$2b$10$N.uFA5Jp7rlfm/d6FivXpud.OU8FqQRSD9RRClhA0VADFgOTDwZQm"
   }
 ]
